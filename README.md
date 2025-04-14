@@ -1,7 +1,7 @@
 
 ---
 
-# **Gesture-Based AI Interaction System – Full Breakdown**
+# **Gesture-Based AI Interaction System**
 
 ---
 
@@ -167,9 +167,10 @@ while run:
 
 cap.release()
 ```
+
 ---
-## **FlowChart**
-![92f72000-e362-4baa-b929-a22f64117d26](https://github.com/user-attachments/assets/b355269f-be98-4a1b-bbf8-a86fbd64a2b9)
+**FlowChart
+![92f72000-e362-4baa-b929-a22f64117d26](https://github.com/user-attachments/assets/9a9185ad-3872-4cf8-8bf5-1f384d8dcdda)
 
 ---
 
@@ -194,3 +195,4 @@ cap.release()
 This app demonstrates a powerful blend of **computer vision**, **gesture recognition**, and **generative AI** — all inside a single Streamlit interface.
 
 ---
+
