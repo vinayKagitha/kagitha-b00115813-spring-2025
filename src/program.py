@@ -37,7 +37,7 @@ with col2:
 # Initialize Shared Components
 # ----------------------------
 # Initialize generative AI (for math solving)
-genai.configure(api_key="AIzaSyDS9BPA5ZVkoCvTg1mOCZPQ0FqGm7nTnjU")
+genai.configure(api_key="AIzaSyDS9BPA5ZVkoCvTg1mOCZPQ0FqGm7n")
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 # Initialize webcam
