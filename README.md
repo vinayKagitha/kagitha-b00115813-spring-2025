@@ -1,31 +1,40 @@
-**Gesture-Based AI System: Math Solver & System Control**
-
-## **Introduction**
-
-This project is a **Streamlit-based application** that integrates **hand gesture recognition** for two modes:
-
-1. **Math Problem Solver** – Allows users to write math equations using hand gestures and solve them using AI.
-2. **System Control** – Enables control of volume, brightness, and mouse using hand gestures.
-
-The application uses **Google Gemini AI, OpenCV, Mediapipe, Pycaw, and PyAutoGUI** to achieve this functionality.
 
 ---
 
-## **1. Streamlit App Configuration**
+# **Gesture-Based AI Interaction System – Full Breakdown**
 
-### **Purpose:**
+---
 
-- Creates the user interface.
-- Allows selection between Math Solver and System Control modes.
+## **🎯 Introduction**
+
+This project is a **real-time gesture-controlled AI system** built with **Streamlit**, which offers two primary features:
+
+1. **🧠 Math Problem Solver** – Write math expressions in the air using your hand, and let Google Gemini AI solve it.
+2. **🖥️ System Control** – Use your hand to control system functions like **volume**, **brightness**, and **mouse** actions without touching your computer.
+
+---
+
+## **🛠️ Tech Stack**
+
+| Feature           | Library / Tool              |
+|------------------|-----------------------------|
+| Webcam Access     | `OpenCV`                    |
+| Hand Tracking     | `MediaPipe`, `cvzone`       |
+| AI Math Solver    | `Google Generative AI (Gemini)` |
+| Web Interface     | `Streamlit`                 |
+| Mouse Automation  | `pyautogui`                 |
+| Volume Control    | `pycaw`                     |
+| Brightness Control| `screen_brightness_control` |
+
+---
+
+## **🖼️ Streamlit App UI**
 
 ```python
-import streamlit as st
-
 st.set_page_config(layout="wide")
-
 mode = st.radio("Select Mode", ("Math Problem Solver", "System Control"))
-
 col1, col2 = st.columns([3, 2])
+
 with col1:
     run = st.checkbox('Run', value=True)
     FRAME_WINDOW = st.image([])
@@ -35,161 +44,153 @@ with col2:
     output_text_area = st.empty()
 ```
 
-### **Explanation:**
-
-- `st.radio()` → Provides a selection between **Math Solver** and **System Control**.
-- `st.checkbox('Run', value=True)` → Controls whether the app runs.
-- `st.image([])` → Placeholder for the webcam feed.
+### 🔍 Explanation:
+- **Mode Switcher**: Select between *Math Solver* or *System Control*.
+- **Run Checkbox**: Toggles the webcam and detection loop.
+- **Image Window**: Shows webcam stream with overlays.
+- **Text Output**: Displays AI response or system status.
 
 ---
 
-## **2. AI Configuration (Google Gemini API)**
+## **🤖 Google Gemini AI Configuration**
 
 ```python
 import google.generativeai as genai
-
 genai.configure(api_key="YOUR_API_KEY")
 model = genai.GenerativeModel('gemini-1.5-flash')
 ```
 
-### **Explanation:**
-
-- `genai.configure(api_key=...)` → Initializes Google Gemini API for AI-powered math-solving.
-- `GenerativeModel('gemini-1.5-flash')` → Loads a fast, lightweight AI model.
+- **Gemini AI** handles interpretation and solving of hand-drawn equations.
 
 ---
 
-## **3. Webcam Initialization**
+## **📷 Webcam Setup & Hand Tracking**
 
 ```python
-import cv2
-
 cap = cv2.VideoCapture(0)
 cap.set(3, 1280)
 cap.set(4, 720)
+
+detector = HandDetector(staticMode=False, maxHands=1, detectionCon=0.7, minTrackCon=0.5)
 ```
 
-### **Explanation:**
-
-- `cv2.VideoCapture(0)` → Opens the **default webcam**.
-- `cap.set(3, 1280)` → Sets **width**.
-- `cap.set(4, 720)` → Sets **height**.
+- Webcam set to **HD resolution**.
+- `HandDetector` used for identifying finger states and positions.
 
 ---
 
-## **4. Hand Tracking for Math Solver**
+## **✍️ Math Solver Logic**
 
-```python
-from cvzone.HandTrackingModule import HandDetector
-
-detector = HandDetector(staticMode=False, maxHands=1, modelComplexity=1, detectionCon=0.7, minTrackCon=0.5)
-```
-
-### **Explanation:**
-
-- Uses **HandDetector** from Cvzone to track hand landmarks.
-- `maxHands=1` → Tracks only one hand.
+### 1. **`getHandInfo_math(img)`**
+Returns:
+- **`fingers`**: Which fingers are up.
+- **`lmList`**: Landmarks of hand for drawing.
 
 ---
 
-## **5. Math Solver: Drawing and AI Processing**
+### 2. **`draw_math(info, prev_pos, canvas, img)`**
 
 ```python
-def draw_math(info, prev_pos, canvas, img):
-    fingers, lmList = info
-    current_pos = None
-    if fingers == [0, 1, 0, 0, 0]:
-        current_pos = lmList[8][0:2]
-        if prev_pos is None:
-            prev_pos = current_pos
-        cv2.line(canvas, current_pos, prev_pos, (255, 0, 255), 10)
-    elif fingers == [1, 0, 0, 0, 0]:
-        canvas = np.zeros_like(img)
-    return current_pos, canvas
+if fingers == [0, 1, 0, 0, 0]:
+    # Draw with index finger
+elif fingers == [1, 0, 0, 0, 0]:
+    # Clear canvas
 ```
 
-### **Explanation:**
-
-- Detects **index finger up** → Draws on the screen.
-- Detects **thumb up** → Clears the drawing.
-
-```python
-def sendToAI_math(model, canvas, fingers):
-    if fingers == [1, 1, 1, 0, 0]:
-        pil_image = Image.fromarray(canvas)
-        response = model.generate_content(["Solve this math problem", pil_image])
-        return response.text
-    return None
-```
-
-### **Explanation:**
-
-- Sends **handwritten equation** to AI when three fingers are up.
-- AI processes and returns the **solution**.
+- Index finger up ➝ start drawing.
+- Thumb up ➝ clear canvas.
 
 ---
 
-## **6. System Control (Mouse, Volume, Brightness)**
-
-### **Volume Control Initialization**
+### 3. **`sendToAI_math(model, canvas, fingers)`**
 
 ```python
-from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-from ctypes import cast, POINTER
-from comtypes import CLSCTX_ALL
-
-devices = AudioUtilities.GetSpeakers()
-interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
-volume = cast(interface, POINTER(IAudioEndpointVolume))
+if fingers == [1, 1, 1, 0, 0]:
+    pil_image = Image.fromarray(canvas)
+    response = model.generate_content(["Solve this math problem", pil_image])
 ```
 
-### **Explanation:**
-
-- Accesses system **audio settings**.
-- Allows **volume control** using hand gestures.
-
-### **Processing Hand Gestures for System Control**
-
-```python
-def process_system_control(image, results):
-    if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-        return image, "System Control: Active"
-    return image, "No hands detected."
-```
-
-### **Explanation:**
-
-- Detects **hand landmarks**.
-- Displays real-time feedback.
+- When 3 fingers are up ➝ take screenshot and send to Gemini AI.
+- Gemini interprets handwritten input and replies with solution.
 
 ---
 
-## **7. Main Loop (Processing Webcam Input)**
+## **🕹️ System Control Mode**
+
+### **Mouse, Volume, Brightness using MediaPipe**
+
+#### `get_finger_distance(lmList, idx1, idx2)`
+- Calculates distance between two landmarks.
+- Used for determining gesture-based control range.
+
+---
+
+#### `process_system_control(image, results)`
+```python
+# If hand detected:
+    - Draw landmarks
+    - Interpret gesture
+    - Trigger system action
+```
+
+- Tracks gesture patterns.
+- Controls system volume, brightness, or mouse depending on gesture.
+
+---
+
+## **🔄 Main Loop – Mode Execution**
 
 ```python
 while run:
     success, img = cap.read()
-    if not success:
-        st.error("Failed to grab frame from webcam.")
-        break
     img = cv2.flip(img, 1)
+
+    if mode == "Math Problem Solver":
+        canvas = np.zeros_like(img) if canvas is None else canvas
+        info = getHandInfo_math(img)
+        if info:
+            fingers, lmList = info
+            prev_pos, canvas = draw_math(info, prev_pos, canvas, img)
+            result_text = sendToAI_math(model, canvas, fingers)
+            if result_text:
+                output_text = result_text
+        FRAME_WINDOW.image(cv2.addWeighted(img, 0.7, canvas, 0.3, 0).astype(np.uint8), channels="BGR")
+        output_text_area.text(output_text)
+    
+    else:
+        image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        results = hands_mediapipe.process(image_rgb)
+        img_processed = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
+        processed_img, sys_output = process_system_control(img_processed, results)
+        FRAME_WINDOW.image(processed_img.astype(np.uint8), channels="BGR")
+        output_text_area.text(sys_output)
+
+cap.release()
 ```
-
-### **Explanation:**
-
-- Captures **webcam frames**.
-- Flips image for a **mirrored effect**.
+---
+## **FlowChart**
+![92f72000-e362-4baa-b929-a22f64117d26](https://github.com/user-attachments/assets/b355269f-be98-4a1b-bbf8-a86fbd64a2b9)
 
 ---
 
-## **Conclusion**
+## **💡 Suggestions for Future**
 
-This project successfully integrates **gesture recognition** with AI to provide a unique interaction experience.
+| Feature | Description |
+|--------|-------------|
+| 🧠 OCR | Improve accuracy for math recognition |
+| 🗂️ Custom Gestures | Let users train their own gesture sets |
+| 🔊 Voice Assistant | Integrate a voice assistant for hands-free commands |
+| 🔁 Gesture Mode Toggle | Switch modes using gesture (no UI interaction needed) |
 
-- **Math Solver Mode** allows users to **write and solve** math problems.
-- **System Control Mode** enables **touch-free** control of the computer.
+---
 
-The combination of **AI, OpenCV, and system automation** makes it a powerful and innovative tool!
-# kagitha-b00115813-spring-2025
+## ✅ Summary
+
+| Mode | Action |
+|------|--------|
+| **Math Solver** | Write equation with fingers, AI solves |
+| **System Control** | Control PC functions via hand gestures |
+
+This app demonstrates a powerful blend of **computer vision**, **gesture recognition**, and **generative AI** — all inside a single Streamlit interface.
+
+---
